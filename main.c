@@ -13,9 +13,9 @@ int main(void) {
     char **tokens = parse_command(command);
     exit = !(strcmp(tokens[0], "exit"));
     if (!(strcmp(tokens[0], "import")))
-      import_file(tokens, d);
+      import_file(tokens);
     else if (!strcmp(tokens[0], "ls"))
-      ls(d);
+      list_contents(tokens);
     else if (!strcmp(tokens[0], "display")) {
       printf("%s", displayDrive(d));
       for (int i = 0; i < 16; i++) {
@@ -24,7 +24,7 @@ int main(void) {
     } else if (!strcmp(tokens[0], "open"))
       displayDrive(d);
     else if (!strcmp(tokens[0], "create"))
-      displayDrive(d);
+      create(tokens);
     else if (!strcmp(tokens[0], "exit"))
       displayDrive(d);
     else if (!strcmp(tokens[0], "mkdir"))

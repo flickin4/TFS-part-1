@@ -46,12 +46,14 @@ void import_file(char **tokens, Drive *d) {
   // Copy a file stored in the regular file system to the current TFS-disk. For
   // part 1, LP is ignored, and an empty file is created at location tp.
 
+	
+	
   // steps
   // find first free block pointer in the directory from the bitmap
   // update the bitmap, write the file name in the correct byte
 }
 
-void ls(char **tokens) {
+void listContents(char **tokens) {
   // maybe do strtok to break up names for path.
   char *names;
 

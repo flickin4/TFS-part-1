@@ -35,9 +35,9 @@ int isUsed(Drive* d, int pos)
     mask = mask << pos;
   else
     mask = 0;
-  return  !((mask&bitmap)==0);
-  
+  return  !((mask&bitmap)==0);  
 }
+
 char* displayDrive(Drive* d)
 {
   const int RETSIZE = 1024;

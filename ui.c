@@ -42,31 +42,45 @@ char **parse_command(char *command) {
   return ret;
 }
 
-void import_file(char **tokens, Drive *d) {
+void import_file(char **tokens) {
   // Copy a file stored in the regular file system to the current TFS-disk. For
   // part 1, LP is ignored, and an empty file is created at location tp.
 
+	
+	
   // steps
   // find first free block pointer in the directory from the bitmap
   // update the bitmap, write the file name in the correct byte
 }
 
-void ls(char **tokens) {
+void list_contents(char **tokens) {
   // maybe do strtok to break up names for path.
-  char *names;
+  // char *names;
+	// char DirName = strtok()
 
-  //  list the contents of the given directory of the TFS-disk
+  // list the contents of the given directory of the TFS-disk
   // steps:
   // confirm the path tp points to a valid directory, if not report error
-  int currentIndex = 0;
-  for (int i = 0; i < strnlen(names, 8); i++) {
-    int entryIndex = 3;
-    char currentEntry = currentDrive->block[currentIndex][entryIndex];
-    while (entryIndex < 11 && currentEntry != names[i]) {
-      char currentEntry = currentDrive->block[currentIndex][entryIndex];
-    }
-    if (currentEntry !=) {
-    }
+	int pathSize = strlen(tokens[2]);
+	for(int i = 0; i < pathSize; i+=2) {
+		char currentDir = tokens[2][i];
+		if(currentDir <= 'Z' && currentDir >= 'A') {
+			printf("%c\n", currentDir);
+		} else { //Add else-if to check if file name for import_file
+			printf("Directory path invalid\n");
+			return;
+		}
+		
+	}
+  // int currentIndex = 0;
+  // for (int i = 0; i < strnlen(names, 8); i++) {
+  //   int entryIndex = 3;
+  //   char currentEntry = currentDrive->block[currentIndex][entryIndex];
+  //   while (entryIndex < 11 && currentEntry != names[i]) {
+  //     char currentEntry = currentDrive->block[currentIndex][entryIndex];
+  //   }
+  //   if (currentEntry !=) {
+  //   }
   }
 
   // use the directory's bitmap to determine which entries are valid
@@ -77,7 +91,7 @@ void ls(char **tokens) {
 
   // char currentEntry = currentDrive->block[dirIndex][entryIndex];
   // while(entryIndex = )
-}
+// }
 
 void openFile(char **tokens) {
   // close the TFS-file currently in use, if any
@@ -104,17 +118,25 @@ void openFile(char **tokens) {
   }
 }
 
-void create(char **tokens, Drive *d) {
+void create(char **tokens) {
   // if file exists, display error
   if (access(tokens[1], F_OK) == 0) {
     printf("Error, file already exists.\n");
     return;
   }
   // create empty disk in memory
-  currentFile = fopen(tokens[1], "r+");
+  currentFile = fopen(tokens[1], "wb+");
+	if(currentFile == NULL)
+		printf("Oh crap");
   currentDrive = newDrive();
+	printf("Created drive!\n");
+	fflush(stdout);
   // save it to the given file name
-  fwrite(dump, 256, 1, currentFile); // TODO: this is prob wrong
+	char* thing = dump(currentDrive);
+	//TODO: writes nothing to the file :(
+ 	fwrite(thing, sizeof(thing[0]), 254, currentFile); 
+	printf("Wrote to file!\n");
+	fflush(stdout);
 }
 
 void makeDirectory(char **tokens, Drive *d) {

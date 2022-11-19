@@ -7,5 +7,6 @@
 #include <unistd.h>
 
 char **parse_command(char *command);
-void import_file(char **tokens, Drive *d);
-void ls(Drive *d);
+void import_file(char **tokens);
+void list_contents(char **tokens);
+void create(char **tokens);
