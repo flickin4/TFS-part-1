@@ -1,10 +1,9 @@
 #include "ui.h"
 
-FILE *currentFile;
+int currentFile = -1;
 Drive *currentDrive;
 
-char **parse_command(char *command) {
-  const char whitespace[7] = " \t\n\v\f\r";
+char **parse_command(char *command, char *whitespace) {
   char *token;
 
   char *cmd;
@@ -43,11 +42,12 @@ char **parse_command(char *command) {
 }
 
 void import_file(char **tokens) {
+  // bullshitting this for now and pretending 1 is directory name and 2 is file
+  // name.
+
   // Copy a file stored in the regular file system to the current TFS-disk. For
   // part 1, LP is ignored, and an empty file is created at location tp.
 
-	
-	
   // steps
   // find first free block pointer in the directory from the bitmap
   // update the bitmap, write the file name in the correct byte
@@ -56,22 +56,41 @@ void import_file(char **tokens) {
 void list_contents(char **tokens) {
   // maybe do strtok to break up names for path.
   // char *names;
-	// char DirName = strtok()
+  // char DirName = strtok()
 
   // list the contents of the given directory of the TFS-disk
   // steps:
   // confirm the path tp points to a valid directory, if not report error
-	int pathSize = strlen(tokens[2]);
-	for(int i = 0; i < pathSize; i+=2) {
-		char currentDir = tokens[2][i];
-		if(currentDir <= 'Z' && currentDir >= 'A') {
-			printf("%c\n", currentDir);
-		} else { //Add else-if to check if file name for import_file
-			printf("Directory path invalid\n");
-			return;
-		}
-		
-	}
+  printf("inside list_contents");
+  fflush(stdout);
+  // printf(tokens[1]);
+
+  // int pathSize = sizeof(tokens[2]);
+  // printf("inside list_contents2");
+  // fflush(stdout);
+  // printf("%d\n", pathSize);
+  // fflush(stdout);
+
+  // char idk[15];
+  // strncpy(&idk, tokens[2], 3);
+  // printf("idk");
+  // 	fflush(stdout);
+  // printf("%s", idk);
+  for (int i = 0; i < 10; i += 2) {
+    printf("inside for");
+    fflush(stdout);
+    char currentDir = tokens[2][i];
+    printf("idk");
+    fflush(stdout);
+    printf("%c\n", currentDir);
+    fflush(stdout);
+    if (currentDir <= 'Z' && currentDir >= 'A') {
+      printf("%c\n", currentDir);
+    } else { // Add else-if to check if file name for import_file
+      printf("Directory path invalid\n");
+      return;
+    }
+  }
   // int currentIndex = 0;
   // for (int i = 0; i < strnlen(names, 8); i++) {
   //   int entryIndex = 3;
@@ -81,7 +100,7 @@ void list_contents(char **tokens) {
   //   }
   //   if (currentEntry !=) {
   //   }
-  }
+  // }
 
   // use the directory's bitmap to determine which entries are valid
   // print out the one character names of the valid entries
@@ -91,63 +110,192 @@ void list_contents(char **tokens) {
 
   // char currentEntry = currentDrive->block[dirIndex][entryIndex];
   // while(entryIndex = )
-// }
+}
 
-void openFile(char **tokens) {
+Drive *open_file(char **tokens) {
   // close the TFS-file currently in use, if any
-  if (currentFile != NULL)
-    fclose(currentFile);
+  if (currentFile != -1) {
+    close(currentFile);
+    currentFile = -1;
+    printf("inside if\n");
+    fflush(stdout);
+  }
   // open an existing TFS-disk file, fails if file DNE
-  currentFile = fopen(tokens[1], "r+");
-  if (currentFile == NULL) {
+  currentFile = open(tokens[1], O_RDWR);
+  printf("%s", tokens[1]);
+  fflush(stdout);
+  if (currentFile == -1) {
     printf("Error, file invalid.\n");
-    return;
+    fflush(stdout);
+    return currentDrive;
   }
   // make sure size of file is valid
   struct stat myInode;
   int ret = stat(tokens[1], &myInode);
   int fileSize = myInode.st_size;
-  if (fileSize == 256) {
-    // TODO: read the file into a Disk struct
-    for (int i = 0; i < 16; i++) {
-      currentDrive = newDrive(); // idk that we need to reset
-      fread(currentDrive->block[i], 1, 16, currentFile);
+  // TODO: check size when size is properly set for files
+  // if (fileSize == 256) {
+  // TODO: read the file into a Disk struct
+  currentDrive = newDrive();
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < 16; j++) {
+      unsigned char b[1];
+      read(currentFile, b, 1);
+      printf("%c\n", b[0]);
+      fflush(stdout);
+      currentDrive->block[i][j] = b[0];
     }
-  } else {
-    printf("Error, file invalid.\n");
   }
+  // } else {
+  //   printf("Error, file size is invalid.\n");
+  // }
+  return currentDrive;
 }
 
-void create(char **tokens) {
+// TODO: add this command to main. make sure if u change value both in thingy
+// AND file, it will change properly. idk.
+void changeIndex(char character, int blockIndex, int byteIndex) {
+  currentDrive->block[blockIndex][byteIndex] = character;
+}
+
+Drive *create(char **tokens) {
+  // close the TFS-file currently in use, if any
+  if (currentFile != -1)
+    close(currentFile);
+
   // if file exists, display error
-  if (access(tokens[1], F_OK) == 0) {
-    printf("Error, file already exists.\n");
-    return;
+  currentFile = open(tokens[1], O_RDONLY);
+  printf("%d", currentFile);
+  fflush(stdout);
+  if (currentFile != -1) {
+    printf("File already exists.\n");
+    fflush(stdout);
+    close(currentFile);
+    currentFile = -1;
+    return currentDrive;
   }
+  // close(currentFile);
+
+  // Create new file with specified name
+  currentFile = open(tokens[1], O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+  if (currentFile == -1) {
+    printf("Failed to create new file.\n");
+    fflush(stdout);
+    return currentDrive;
+  }
+
   // create empty disk in memory
-  currentFile = fopen(tokens[1], "wb+");
-	if(currentFile == NULL)
-		printf("Oh crap");
   currentDrive = newDrive();
-	printf("Created drive!\n");
-	fflush(stdout);
-  // save it to the given file name
-	char* thing = dump(currentDrive);
-	//TODO: writes nothing to the file :(
- 	fwrite(thing, sizeof(thing[0]), 254, currentFile); 
-	printf("Wrote to file!\n");
-	fflush(stdout);
+  printf("Created drive!\n");
+  fflush(stdout);
+  // save it to the open file
+
+  // TODO: AKJSDFHGREFJCNMX
+  // const unsigned char *buf = (char *) malloc(254);
+  // unsigned char *buf2 = unsigned char[254]();
+  unsigned char *ret = malloc(256);
+
+  // printf("%s\n", buf2);
+  // fflush(stdout);
+
+  strncpy(ret, dump(currentDrive), 256);
+  // errno;
+
+  printf("%s\n", ret);
+  fflush(stdout);
+
+  printf("%s\n", dump(currentDrive));
+  fflush(stdout);
+
+  const int RETSIZE = 700;
+  char *temp = malloc(RETSIZE);
+  char *fileOutput = malloc(RETSIZE);
+  for (int i = 0; i < 256; i++) {
+    sprintf(temp, "%.1x", ret[i]);
+    strncat(fileOutput, temp, RETSIZE);
+    // strncat(fileOutput,ret[i],RETSIZE);
+  }
+
+  write(currentFile, fileOutput, RETSIZE);
+  // write(currentFile, &buf, 254);
+  // close(currentFile);
+
+  // printf("%d", b);
+  // fflush(stdout);
+  return currentDrive;
+}
+
+int getBlock(char *pathToParse) {
+  char **path = parse_command(pathToParse, "/");
+
+  // CHECK IF PATH IS VALID!
+
+  if (sizeof(path) > 8) { // TODO: this prob wont work
+    printf("Path is out of range.");
+    return -1;
+  }
+
+  int currNameIndex = 0;
+  char *currentName = path[0];
+  int currentBlock = 0;
+  int currentByte = 3;
+
+  // Loop through names in path
+  // Last valid index should be name of new directory/file
+  while (path[currNameIndex + 1] != NULL) {
+    // Every pathname must have length of 1
+    // And be valid uppercase letter
+    if (strlen(currentName) > 1 || currentName[0] < 'A' ||
+        currentName[0] > 'Z') {
+      printf("Invalid path name.");
+      return -1;
+    }
+
+    // Loop thru bytes 3-10 looking for name
+    while (currentName[0] != currentDrive->block[currentBlock][currentByte]) {
+      // If went through entire list without finding, display error
+      if (currentByte > 10) {
+        printf("Directory %c not found in path", currentName[0]);
+        return -1;
+      }
+    }
+    // If found, check block->[currentBlock][oneOfthelast4]
+    // To find update currentBlock and repeat the process
+    // int isEven = currentByte % 2;
+    // if !isEven shift right by 4.
+    // else mask =
+    //
+    // unsigned long bitmap = 0;
+    // unsigned long mask = 1;
+    int isEven = currentByte % 2;
+    currentByte = currentByte / 2 + 10;
+    if (isEven) {
+      currentBlock = currentDrive->block[0][currentByte] / 10;
+      // memcpy(&bitmap, d->block[0][currentByte], 4);
+    } else {
+      currentBlock = currentDrive->block[0][currentByte] % 10;
+      // memcpy(&bitmap, d->block[0][currentByte], 8);
+      // mask = mask >> 4;
+    }
+    // TODO: what if isn't used anymore?
+
+    // currentBlock = bitmap & mask;
+    currentByte = 3;
+
+    // Return block number of parent block so we can put the dir name in there
+    // and update shite
+  }
 }
 
 void makeDirectory(char **tokens, Drive *d) {
+  int blockIndex = getBlock(tokens[1]);
+  if (blockIndex == -1)
+    return;
+
   // Create a new directory in the TFS-disk.
 
-  // steps:
-  // confirm there is a free block in the root freespace bitmap
+  // TODO: potentially use isUsed for this and finding block for new dir
 
-  // TODO: potentially use isopen for this and finding block for new dir
-
-  // confirm the path tp points to a valid location for a new directory
   // use the freespace bitmap to find a block for the new directory
   // use the parent directory bitmap to find an entry for tp
   // update the freespace bitmap to remove the selected block

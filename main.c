@@ -2,15 +2,19 @@
 #include <stdio.h>
 
 int main(void) {
+  // TODO: main has a different version of drive than ui does!!! make sure it
+  // gets reset!!!!
   Drive *d = newDrive();
   int exit = 0;
   printf("Virtual file system\n");
   printf(":> ");
   while (!exit) {
     size_t size = 256;
+    // TODO: create or open must be called before any other methods that change
+    // data
     char *command = malloc(size);
     getline(&command, &size, stdin);
-    char **tokens = parse_command(command);
+    char **tokens = parse_command(command, " \t\n\v\f\r");
     exit = !(strcmp(tokens[0], "exit"));
     if (!(strcmp(tokens[0], "import")))
       import_file(tokens);
@@ -22,9 +26,9 @@ int main(void) {
         printf("block %d is used: %d\n", i, isUsed(d, i));
       }
     } else if (!strcmp(tokens[0], "open"))
-      displayDrive(d);
+      d = open_file(tokens);
     else if (!strcmp(tokens[0], "create"))
-      create(tokens);
+      d = create(tokens);
     else if (!strcmp(tokens[0], "exit"))
       displayDrive(d);
     else if (!strcmp(tokens[0], "mkdir"))

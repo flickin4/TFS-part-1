@@ -6,6 +6,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-char **parse_command(char *command);
-void import_file(char **tokens, Drive *d);
-void ls(Drive *d);
+#include <errno.h>
+
+char **parse_command(char *command, char *whitespace);
+void import_file(char **tokens);
+void list_contents(char **tokens);
+Drive *create(char **tokens);
+Drive *open_file(char **tokens);
