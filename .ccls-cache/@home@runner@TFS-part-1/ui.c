@@ -1,6 +1,7 @@
 #include "ui.h"
 
 int currentFile = -1;
+// const char *fileName;
 Drive *currentDrive;
 
 char **parse_command(char *command, char *whitespace) {
@@ -115,15 +116,24 @@ void list_contents(char **tokens) {
 Drive *open_file(char **tokens) {
   // close the TFS-file currently in use, if any
   if (currentFile != -1) {
+    // saveDriveToFile();
     close(currentFile);
     currentFile = -1;
-    printf("inside if\n");
-    fflush(stdout);
   }
   // open an existing TFS-disk file, fails if file DNE
-  currentFile = open(tokens[1], O_RDWR);
-  printf("%s", tokens[1]);
+  printf("before adding .bin");
   fflush(stdout);
+  const char *name = tokens[1];
+  const char *extension = ".bin";
+  char *fileName = malloc(strlen(name) + 1 + 4);
+  strcpy(fileName, name);
+  strcat(fileName, extension);
+  printf("%s\n", fileName);
+  fflush(stdout);
+  currentFile = open(fileName, O_RDWR);
+  printf("%s", fileName);
+  fflush(stdout);
+
   if (currentFile == -1) {
     printf("Error, file invalid.\n");
     fflush(stdout);
@@ -131,18 +141,23 @@ Drive *open_file(char **tokens) {
   }
   // make sure size of file is valid
   struct stat myInode;
-  int ret = stat(tokens[1], &myInode);
+  int ret = stat(fileName, &myInode);
   int fileSize = myInode.st_size;
   // TODO: check size when size is properly set for files
   // if (fileSize == 256) {
-  // TODO: read the file into a Disk struct
   currentDrive = newDrive();
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 16; j++) {
       unsigned char b[1];
       read(currentFile, b, 1);
-      currentDrive->block[i][j] = b[0];
+      fflush(stdout);
+      currentDrive->block[i][j] =
+          (int)b[0]; // TODO: should only cast if it's actually an int
     }
+  }
+  printf("%s", displayDrive(currentDrive));
+  for (int i = 0; i < 16; i++) {
+    printf("block %d is used: %d\n", i, isUsed(currentDrive, i));
   }
   // } else {
   //   printf("Error, file size is invalid.\n");
@@ -152,13 +167,26 @@ Drive *open_file(char **tokens) {
 
 Drive *create(char **tokens) {
   // close the TFS-file currently in use, if any
-  if (currentFile != -1)
+  if (currentFile != -1) {
+    // saveDriveToFile();
     close(currentFile);
+    currentFile = -1;
+  }
 
   // if file exists, display error
-  currentFile = open(tokens[1], O_RDONLY);
-  printf("%d", currentFile);
+  printf("before adding .bin");
   fflush(stdout);
+  const char *name = tokens[1];
+  const char *extension = ".bin";
+  char *fileName = malloc(strlen(name) + 1 + 4);
+  strcpy(fileName, name);
+  strcat(fileName, extension);
+  printf("%s\n", fileName);
+  fflush(stdout);
+  currentFile = open(fileName, O_RDONLY);
+  printf("file opened\n");
+  fflush(stdout);
+
   if (currentFile != -1) {
     printf("File already exists.\n");
     fflush(stdout);
@@ -166,10 +194,9 @@ Drive *create(char **tokens) {
     currentFile = -1;
     return currentDrive;
   }
-  // close(currentFile);
 
   // Create new file with specified name
-  currentFile = open(tokens[1], O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
+  currentFile = open(fileName, O_CREAT | O_RDWR, S_IRWXU | S_IRWXG | S_IRWXO);
   if (currentFile == -1) {
     printf("Failed to create new file.\n");
     fflush(stdout);
@@ -178,43 +205,31 @@ Drive *create(char **tokens) {
 
   // create empty disk in memory
   currentDrive = newDrive();
-  printf("Created drive!\n");
-  fflush(stdout);
-  // save it to the open file
+  saveDriveToFile();
 
-  // TODO: AKJSDFHGREFJCNMX
-  // const unsigned char *buf = (char *) malloc(254);
-  // unsigned char *buf2 = unsigned char[254]();
+  return currentDrive;
+}
+
+void saveDriveToFile() {
   unsigned char *ret = malloc(256);
 
-  // printf("%s\n", buf2);
-  // fflush(stdout);
-
   strncpy(ret, dump(currentDrive), 256);
-  // errno;
 
-  printf("%s\n", ret);
-  fflush(stdout);
-
-  printf("%s\n", dump(currentDrive));
-  fflush(stdout);
+  // unsigned char b = 1;
+  // write(currentFile, b, 1);
+  // return currentDrive;
 
   const int RETSIZE = 700;
-  char *temp = malloc(RETSIZE);
-  char *fileOutput = malloc(RETSIZE);
+  unsigned char *temp = malloc(RETSIZE);
+  unsigned char *fileOutput = malloc(RETSIZE);
   for (int i = 0; i < 256; i++) {
-    sprintf(temp, "%.1x", ret[i]);
+    // write(currentFile, &ret[i], 1);
+    sprintf(temp, "%d", ret[i]);
     strncat(fileOutput, temp, RETSIZE);
     // strncat(fileOutput,ret[i],RETSIZE);
   }
 
   write(currentFile, fileOutput, RETSIZE);
-  // write(currentFile, &buf, 254);
-  // close(currentFile);
-
-  // printf("%d", b);
-  // fflush(stdout);
-  return currentDrive;
 }
 
 int getBlock(char **path) {
@@ -281,21 +296,15 @@ void makeDirectory(char **tokens) {
 
   // confirm path tp points to valid location for new directory
   char **path = parse_command(tokens[1], "/");
-  printf("After parse_command, value 1 = %s\n", path[0]);
-  fflush(stdout);
   int parentBlock = getBlock(path);
   if (parentBlock == -1)
     return;
-  printf("After getBlock, parent block = %d\n", parentBlock);
-  fflush(stdout);
 
   // use freespace bitmap to find block for new directory
   int blockIndex = 0;
   while (isUsed(currentDrive, blockIndex)) {
     blockIndex++;
   }
-  printf("Next free block = %d\n", blockIndex);
-  fflush(stdout);
   // use the parent directory bitmap to find an entry for tp
   int parDirIndex = findFreeSpot(currentDrive->block[parentBlock][2], 8) + 3;
   // TODO: I think +3 is necessary?
@@ -317,12 +326,8 @@ void makeDirectory(char **tokens) {
   fflush(stdout);
   printf("Value is %.8x\n", currentDrive->block[parentBlock][2]);
   fflush(stdout);
-  unsigned char name = path[sizeof(path) - 1][0];
-  currentDrive->block[parentBlock][parDirIndex] |= name;
-  printf("Added name in parent dir\n");
-  fflush(stdout);
-  printf("Value is %c\n", currentDrive->block[parentBlock][parDirIndex]);
-  fflush(stdout);
+  int *lastIndex = (int *)(&path + 1) - 1;
+  currentDrive->block[parentBlock][parDirIndex] = *path[*lastIndex];
   // Update block pointer
   int isEven = parDirIndex % 2;
   parDirIndex = parDirIndex / 2 + 10;
