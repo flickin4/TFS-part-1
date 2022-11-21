@@ -29,10 +29,8 @@ int main(void) {
       d = open_file(tokens);
     else if (!strcmp(tokens[0], "create"))
       d = create(tokens);
-    else if (!strcmp(tokens[0], "exit"))
-      displayDrive(d);
     else if (!strcmp(tokens[0], "mkdir"))
-      displayDrive(d);
+      makeDirectory(tokens);
     else if (exit) {
       return (0);
     }

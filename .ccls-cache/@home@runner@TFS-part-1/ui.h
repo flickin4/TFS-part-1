@@ -14,3 +14,4 @@ void list_contents(char **tokens);
 Drive *create(char **tokens);
 Drive *open_file(char **tokens);
 int findFreeSpot(unsigned char bitmap, int bitsize);
+void makeDirectory(char **tokens);

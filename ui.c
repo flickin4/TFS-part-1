@@ -141,8 +141,6 @@ Drive *open_file(char **tokens) {
     for (int j = 0; j < 16; j++) {
       unsigned char b[1];
       read(currentFile, b, 1);
-      printf("%c\n", b[0]);
-      fflush(stdout);
       currentDrive->block[i][j] = b[0];
     }
   }
@@ -270,36 +268,61 @@ int getBlock(char **path) {
   return currentBlock;
 }
 
-void makeDirectory(char **tokens, Drive *d) {
+void makeDirectory(char **tokens) {
   // confirm there is a free block in the root freespace bitmap
+  printf("inside makeDirectory\n");
+  fflush(stdout);
   if (currentDrive->block[0][2] > 255) {
     printf("No blocks remaining.");
     return;
   }
+  printf("After size check ln 279\n");
+  fflush(stdout);
 
   // confirm path tp points to valid location for new directory
   char **path = parse_command(tokens[1], "/");
+  printf("After parse_command, value 1 = %s\n", path[0]);
+  fflush(stdout);
   int parentBlock = getBlock(path);
   if (parentBlock == -1)
     return;
+  printf("After getBlock, parent block = %d\n", parentBlock);
+  fflush(stdout);
 
   // use freespace bitmap to find block for new directory
   int blockIndex = 0;
   while (isUsed(currentDrive, blockIndex)) {
     blockIndex++;
   }
+  printf("Next free block = %d\n", blockIndex);
+  fflush(stdout);
   // use the parent directory bitmap to find an entry for tp
-  int parDirIndex = findFreeSpot(d->block[parentBlock][2], 8);
+  int parDirIndex = findFreeSpot(currentDrive->block[parentBlock][2], 8) + 3;
+  // TODO: I think +3 is necessary?
+  printf("Next free spot = %d\n", parDirIndex);
+  fflush(stdout);
   if (parDirIndex == -1) {
     printf("No free space to add to parent directory");
     return;
   }
   // update the freespace bitmap to remove the selected block
-  d->block[0][2] |= 1 << blockIndex;
+  currentDrive->block[0][2] |= 1 << blockIndex;
+  printf("Updated freespace bitmap for root\n");
+  fflush(stdout);
+  printf("Value is %.8x\n", currentDrive->block[0][2]);
+  fflush(stdout);
   // update the parent directory bitmap, name, and block pointer: tp
-  d->block[parentBlock][2] |= 1 << parDirIndex;
+  currentDrive->block[parentBlock][2] |= 1 << parDirIndex;
+  printf("Updated freespace bitmap for parent dir\n");
+  fflush(stdout);
+  printf("Value is %.8x\n", currentDrive->block[parentBlock][2]);
+  fflush(stdout);
   unsigned char name = path[sizeof(path) - 1][0];
-  d->block[parentBlock][parDirIndex] |= name;
+  currentDrive->block[parentBlock][parDirIndex] |= name;
+  printf("Added name in parent dir\n");
+  fflush(stdout);
+  printf("Value is %c\n", currentDrive->block[parentBlock][parDirIndex]);
+  fflush(stdout);
   // Update block pointer
   int isEven = parDirIndex % 2;
   parDirIndex = parDirIndex / 2 + 10;
