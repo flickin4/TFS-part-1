@@ -152,12 +152,6 @@ Drive *open_file(char **tokens) {
   return currentDrive;
 }
 
-// TODO: add this command to main. make sure if u change value both in thingy
-// AND file, it will change properly. idk.
-void changeIndex(char character, int blockIndex, int byteIndex) {
-  currentDrive->block[blockIndex][byteIndex] = character;
-}
-
 Drive *create(char **tokens) {
   // close the TFS-file currently in use, if any
   if (currentFile != -1)
@@ -225,12 +219,9 @@ Drive *create(char **tokens) {
   return currentDrive;
 }
 
-int getBlock(char *pathToParse) {
-  char **path = parse_command(pathToParse, "/");
-
+int getBlock(char **path) {
   // CHECK IF PATH IS VALID!
-
-  if (sizeof(path) > 8) { // TODO: this prob wont work
+  if (sizeof(path) > 17) { // TODO: this prob wont work
     printf("Path is out of range.");
     return -1;
   }
@@ -259,14 +250,8 @@ int getBlock(char *pathToParse) {
         return -1;
       }
     }
-    // If found, check block->[currentBlock][oneOfthelast4]
-    // To find update currentBlock and repeat the process
-    // int isEven = currentByte % 2;
-    // if !isEven shift right by 4.
-    // else mask =
-    //
-    // unsigned long bitmap = 0;
-    // unsigned long mask = 1;
+
+    // Get block number of directory
     int isEven = currentByte % 2;
     currentByte = currentByte / 2 + 10;
     if (isEven) {
@@ -281,26 +266,67 @@ int getBlock(char *pathToParse) {
 
     // currentBlock = bitmap & mask;
     currentByte = 3;
-
-    // Return block number of parent block so we can put the dir name in there
-    // and update shite
   }
+  return currentBlock;
 }
 
 void makeDirectory(char **tokens, Drive *d) {
-  int blockIndex = getBlock(tokens[1]);
-  if (blockIndex == -1)
+  // confirm there is a free block in the root freespace bitmap
+  if (currentDrive->block[0][2] > 255) {
+    printf("No blocks remaining.");
+    return;
+  }
+
+  // confirm path tp points to valid location for new directory
+  char **path = parse_command(tokens[1], "/");
+  int parentBlock = getBlock(path);
+  if (parentBlock == -1)
     return;
 
-  // Create a new directory in the TFS-disk.
-
-  // TODO: potentially use isUsed for this and finding block for new dir
-
-  // use the freespace bitmap to find a block for the new directory
+  // use freespace bitmap to find block for new directory
+  int blockIndex = 0;
+  while (isUsed(currentDrive, blockIndex)) {
+    blockIndex++;
+  }
   // use the parent directory bitmap to find an entry for tp
+  int parDirIndex = findFreeSpot(d->block[parentBlock][2], 8);
+  if (parDirIndex == -1) {
+    printf("No free space to add to parent directory");
+    return;
+  }
   // update the freespace bitmap to remove the selected block
+  d->block[0][2] |= 1 << blockIndex;
   // update the parent directory bitmap, name, and block pointer: tp
+  d->block[parentBlock][2] |= 1 << parDirIndex;
+  unsigned char name = path[sizeof(path) - 1][0];
+  d->block[parentBlock][parDirIndex] |= name;
+  // Update block pointer
+  int isEven = parDirIndex % 2;
+  parDirIndex = parDirIndex / 2 + 10;
+  if (isEven) {
+    // First step is incase block pointer exists for old deleted directory
+    parDirIndex = currentDrive->block[0][parDirIndex] % 10;
+    parDirIndex += blockIndex * 10;
+  } else {
+    parDirIndex = (currentDrive->block[0][parDirIndex] / 10) * 10;
+    parDirIndex += blockIndex;
+  }
   // initialize the bitmap and parent pointer of the new directory block
+  // I don't think we are sposed to do this last step?
+}
+
+int findFreeSpot(unsigned char bitmap, int bitsize) {
+  int index = 0;
+  unsigned char mask = 1;
+  while (((mask & bitmap) != 0) && index < bitsize) {
+    index++;
+    mask = mask << 1;
+  }
+  if (index < bitsize) {
+    return index;
+  } else {
+    return -1;
+  }
 }
 
 void removeFromTFS(char **tokens, Drive *d) {
