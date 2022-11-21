@@ -116,7 +116,7 @@ void list_contents(char **tokens) {
 Drive *open_file(char **tokens) {
   // close the TFS-file currently in use, if any
   if (currentFile != -1) {
-    // saveDriveToFile();
+    saveDriveToFile();
     close(currentFile);
     currentFile = -1;
   }
@@ -168,7 +168,7 @@ Drive *open_file(char **tokens) {
 Drive *create(char **tokens) {
   // close the TFS-file currently in use, if any
   if (currentFile != -1) {
-    // saveDriveToFile();
+    saveDriveToFile();
     close(currentFile);
     currentFile = -1;
   }
@@ -211,6 +211,8 @@ Drive *create(char **tokens) {
 }
 
 void saveDriveToFile() {
+
+  // save it to the open file
   unsigned char *ret = malloc(256);
 
   strncpy(ret, dump(currentDrive), 256);
@@ -224,12 +226,31 @@ void saveDriveToFile() {
   unsigned char *fileOutput = malloc(RETSIZE);
   for (int i = 0; i < 256; i++) {
     // write(currentFile, &ret[i], 1);
-    sprintf(temp, "%d", ret[i]);
+    sprintf(temp, "%x", ret[i]);
     strncat(fileOutput, temp, RETSIZE);
     // strncat(fileOutput,ret[i],RETSIZE);
   }
 
   write(currentFile, fileOutput, RETSIZE);
+  // unsigned char *ret = malloc(256);
+
+  // strncpy(ret, dump(currentDrive), 256);
+
+  // // unsigned char b = 1;
+  // // write(currentFile, b, 1);
+  // // return currentDrive;
+
+  // const int RETSIZE = 700;
+  // unsigned char *temp = malloc(RETSIZE);
+  // unsigned char *fileOutput = malloc(RETSIZE);
+  // for (int i = 0; i < 256; i++) {
+  //   // write(currentFile, &ret[i], 1);
+  //   sprintf(temp, "%d", ret[i]);
+  //   strncat(fileOutput, temp, RETSIZE);
+  //   // strncat(fileOutput,ret[i],RETSIZE);
+  // }
+
+  // write(currentFile, fileOutput, RETSIZE);
 }
 
 int getBlock(char **path) {
